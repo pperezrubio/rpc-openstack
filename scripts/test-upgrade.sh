@@ -105,6 +105,19 @@ cd ${OA_DIR}/playbooks
 ansible galera_all[0] -m shell -a "mysql --verbose -e \"${VLAN_FLAT}\" neutron"
 ansible galera_all[0] -m shell -a "mysql --verbose -e \"${VXLAN}\" neutron"
 
+# CEPH CHANGES
+# These are the instructions to give if there is a failure message on ceph-mon.yml
+set -e
+if [ $(ansible mons --list-hosts | wc -l) -gt 1 ]; then
+  for mon in $(ansible mons --list-hosts); do
+    ansible $mon -m command -a "stop ceph-mon id=$mon"
+    ansible $mon -m command -a "ceph mon remove $mon"
+    openstack-ansible lxc-containers-destroy.yml --skip-tags=container-directories --limit $mon
+    openstack-ansible lxc-containers-create.yml --limit $mon
+    openstack-ansible ${RPCD_DIR}/playbooks/ceph-mon.yml --limit $mon
+  done
+fi
+
 # TASK #6
 # https://github.com/rcbops/u-suk-dev/issues/392
 # Upgrade openstack-ansible

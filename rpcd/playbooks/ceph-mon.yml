@@ -17,8 +17,65 @@
   hosts: mons
   user: root
   max_fail_percentage: 0
+  #serial: "{{ ceph_upgrade | default(False) | bool | ternary('1','100%') }}"
+  pre_tasks:
+    #Upgrades safety net
+    - name: Checking if container has ceph content
+      stat:
+        path: "/var/lib/ceph/"
+      register: container_ceph_dir
+      failed_when: false
+
+    - name: Checking if the ceph folder is a bind mount
+      shell: egrep 'lxc.mount.entry.*/openstack/{{ inventory_hostname }}.*ceph.*bind' /var/lib/lxc/{{ inventory_hostname }}/config
+      failed_when: false
+      delegate_to:  "{{ physical_host }}"
+      when: container_ceph_dir is defined
+      register: container_ceph_bind_mount
+
+    - name: If ceph is not in a bind-mount, create a backup folder
+      file:
+        state: directory
+        path: /backup/
+      when: container_ceph_bind_mount | failed
+
+    - name: If ceph is not in a bind-mount, backup it
+      shell: cp -r /var/lib/ceph/* /backup/
+      when: container_ceph_bind_mount | failed
+
+    - name: Fetch the backups
+      shell: "scp -r {{ inventory_hostname }}:/backup/ /openstack/backup/{{ inventory_hostname }}/ceph/"
+      when: container_ceph_bind_mount | failed
+      delegate_to: 'localhost'
+
+    - fail:
+        msg: |
+        "You don't have bind mounts and want to upgrade to bind mounts
+        without doing the proper steps. Terrible idea. I'm stopping you
+        right now. Please check the documentation on how to upgrade
+        if you are willing to take the risk."
+      when:
+        - container_ceph_dir is defined
+        - container_ceph_bind_mount | failed
+        #- not ceph_upgrade | bool
+
+    #Greenfields
+    - name: Mons extra lxc config
+      lxc_container:
+        name: "{{ container_name }}"
+        container_command: |
+          [[ ! -d "/var/lib/ceph" ]] && mkdir -p "/var/lib/ceph"
+        container_config:
+          - "lxc.mount.entry=/openstack/{{ container_name }} var/lib/ceph none bind 0 0"
+      delegate_to: "{{ physical_host }}"
+      when: not is_metal | bool
+      register: container_extra_config
   roles:
     - ceph.ceph-mon
+
+- name: Remove rbd pool
+  hosts: mons[0]
+  user: root
   tasks:
     - name: Check if rbd pool exists and is empty
       shell: rados -p rbd df | egrep '^rbd( +0){9}$'
