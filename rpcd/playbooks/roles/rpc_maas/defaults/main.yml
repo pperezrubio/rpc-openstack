@@ -425,7 +425,8 @@ openstack_service_remote_checks_list:
   - { name: "lb_api_check_heat_api", group: "heat_api" }
   - { name: "lb_api_check_heat_cfn", group: "heat_api_cfn" }
   - { name: "lb_api_check_heat_cloudwatch", group: "heat_api_cloudwatch" }
-  - { name: "lb_api_check_swift_proxy", group: "swift_proxy" }
+  - { name: "lb_api_check_swift_healthcheck", group: "swift_proxy" }
+  - { name: "lb_api_check_swift_access", group: "swift_proxy" }
 
 ssl_cert_checks_list:
   - { name: "lb_ssl_cert_expiry_check", group: "utility"}

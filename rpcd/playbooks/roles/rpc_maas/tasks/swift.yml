@@ -28,6 +28,55 @@
     - inventory_hostname in groups['swift_hosts']
 
 
+# Setup Swift data accessibility
+- name: Create swift user
+  # Can we source normal openstack user/pass/endpoint data for this?
+  # Does it have to be a lower privilege user?
+  # create swift user {{ swift_access_user }}
+
+- name: Create swift container
+  # swift --os-auth-url={{ OS_AUTH_URL }} \
+  #   --auth-version {{ OS_AUTH_VERSION }}\
+  #   --os-project-name {{ OS_PROJECT_NAME }} \
+  #   --os-project-domain-name {{ OS_PROJECT_DOMAIN_NAME }} \
+  #    --os-username {{ OS_USERNAME }} --os-password {{ OS_PASSWORD }} \
+  #    --os-user-domain-name {{ OS_USER_DOMAIN_NAME }} \
+  #    post {{ swift_access_container }}
+
+- name: Create check file
+  # swift --os-auth-url={{ OS_AUTH_URL }} \
+  #   --auth-version {{ OS_AUTH_VERSION }}\
+  #   --os-project-name {{ OS_PROJECT_NAME }} \
+  #   --os-project-domain-name {{ OS_PROJECT_DOMAIN_NAME }} \
+  #    --os-username {{ OS_USERNAME }} --os-password {{ OS_PASSWORD }} \
+  #    --os-user-domain-name {{ OS_USER_DOMAIN_NAME }} \
+  #    upload {{ swift_access_container }} {{ swift_access_index }}
+
+- name: Configure check container
+  # swift --os-auth-url={{ OS_AUTH_URL }} \
+  #   --auth-version {{ OS_AUTH_VERSION }}\
+  #   --os-project-name {{ OS_PROJECT_NAME }} \
+  #   --os-project-domain-name {{ OS_PROJECT_DOMAIN_NAME }} \
+  #    --os-username {{ OS_USERNAME }} --os-password {{ OS_PASSWORD }} \
+  #    --os-user-domain-name {{ OS_USER_DOMAIN_NAME }} \
+  #    post -r '.r:*' {{ swift_access_container }}
+  # swift --os-auth-url={{ OS_AUTH_URL }} \
+  #   --auth-version {{ OS_AUTH_VERSION }}\
+  #   --os-project-name {{ OS_PROJECT_NAME }} \
+  #   --os-project-domain-name {{ OS_PROJECT_DOMAIN_NAME }} \
+  #    --os-username {{ OS_USERNAME }} --os-password {{ OS_PASSWORD }} \
+  #    --os-user-domain-name {{ OS_USER_DOMAIN_NAME }} \
+  #    post -m 'web-index:index.html' {{ swift_access_container }}
+
+- name: Retrieve check file URL
+  # Generate a tempurl with a massively long 'expires' value
+  # swift tempurl GET --absolute 4294967295 /v1/{{ swift_auth_account }}/{{ swift_access_container }}/index.html \
+  #   {{ swift_temp_url_key }}
+  # Should return something similar to:
+  #   /v1/AUTH_c1fd7d36578049c9856d5f8f21e4be2c/web/index.html?temp_url_sig=31b92688ecfbf77eb73a9f05fa557c04790785c7&temp_url_expires=4294967295
+  # Access similar to:
+  # {{ maas_swift_proxy_scheme | default(maas_scheme)}}://{{ ip_address }}:8080/{{tempurl}}
+
 # Setup Swift Server healthchecks
 - include: ensure_local_checks.yml
   vars:
